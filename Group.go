@@ -1,9 +1,11 @@
 package rush
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"path"
+	"reflect"
 )
 
 type group struct {
@@ -21,17 +23,30 @@ func (g *group) Member(name string) *member {
 	return &member{name: name, path: path.Join(g.path, name)}
 }
 
-func (g *group) GetAll() []string {
+func (g *group) GetAll(v interface{}) {
 	files, err := os.ReadDir(g.path)
 	if err != nil {
 		log.Println("\033[31m", err)
 	}
 
-	var content []string
+	if reflect.TypeOf(v).Kind() != reflect.Ptr {
+		log.Println("\033[31m", "Error: Paramater must be a pointer")
+	} else {
+		for _, file := range files {
+			log.Println(file.Type())
+			if file.IsDir() {
+				buff, err := os.ReadFile(path.Join(g.path, file.Name(), file.Name()+".json"))
+				if err != nil {
+					log.Println("\033[31m", err)
+				} else {
+					if err := json.Unmarshal(buff, v); err != nil {
+						log.Println("\033[31m", err)
+					}
+				}
 
-	for _, file := range files {
-		content = append(content, file.Name())
+			}
+			// content = append(content, file.Name())
+		}
 	}
 
-	return content
 }

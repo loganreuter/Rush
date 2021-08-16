@@ -6,18 +6,18 @@ import (
 	"path"
 )
 
-type Connection struct {
+type connection struct {
 	dirname string
 	groups  []*group
 }
 
-func Connect(relPath string, name string) (*Connection, error) {
+func Connect(relPath string, name string) (*connection, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
-	conn := &Connection{dirname: path.Join(path.Join(dir, relPath), name)}
+	conn := &connection{dirname: path.Join(path.Join(dir, relPath), name)}
 
 	if err := os.MkdirAll(conn.dirname, 0755); err != nil {
 		return nil, err
@@ -26,9 +26,9 @@ func Connect(relPath string, name string) (*Connection, error) {
 	return conn, nil
 }
 
-func AbsConnect(absPath string, name string) (*Connection, error) {
+func AbsConnect(absPath string, name string) (*connection, error) {
 
-	conn := &Connection{dirname: path.Join(absPath, name)}
+	conn := &connection{dirname: path.Join(absPath, name)}
 
 	if err := os.MkdirAll(conn.dirname, 0755); err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func AbsConnect(absPath string, name string) (*Connection, error) {
 	return conn, nil
 }
 
-func (conn *Connection) Group(name string) *group {
+func (conn *connection) Group(name string) *group {
 	for _, group := range conn.groups {
 		if group.name == name {
 			return group
