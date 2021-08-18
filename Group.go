@@ -2,11 +2,15 @@ package rush
 
 import (
 	"encoding/json"
-	"github.com/lreuter2020/rush/Errors"
+	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path"
-	// "reflect"
+	"sync"
+	"time"
+
+	"github.com/lreuter2020/rush/Errors"
 )
 
 type group struct {
@@ -25,28 +29,53 @@ func (g *group) Member(name string) *member {
 }
 
 func (g *group) GetAll(v interface{}) {
+	var wg sync.WaitGroup
+	start := time.Now()
 	files, err := os.ReadDir(g.path)
 	if err != nil {
 		log.Println("\033[31m", err)
 	}
+	var list []map[string]interface{}
 
-	// if reflect.TypeOf(v).Kind() != reflect.Ptr {
-	// 	error.Emit("Error: Paramater must be a pointer")
-	// }
+	ch := make(chan map[string]interface{}, 50)
+
 	for _, file := range files {
-		log.Println(file.Type())
-		if file.IsDir() {
-			buff, err := os.ReadFile(path.Join(g.path, file.Name(), file.Name()+".json"))
-			if err != nil {
-				error.Emit(err)
-			} else {
-				if err := json.Unmarshal(buff, v); err != nil {
-					error.Emit(err)
-				}
-			}
 
+		if file.IsDir() {
+			wg.Add(1)
+			go func(file fs.DirEntry) {
+				defer wg.Done()
+				buff, err := os.ReadFile(path.Join(g.path, file.Name(), file.Name()+".json"))
+				if err != nil {
+					CError.Emit(err)
+				} else {
+
+					var rv map[string]interface{}
+
+					if err := json.Unmarshal(buff, &rv); err != nil {
+						CError.Emit(err)
+					}
+					ch <- rv
+				}
+			}(file)
 		}
-		// content = append(content, file.Name())
 	}
 
+	go func(wg *sync.WaitGroup, ch chan map[string]interface{}) {
+		wg.Wait()
+		close(ch)
+	}(&wg, ch)
+
+	for v := range ch {
+		list = append(list, v)
+	}
+
+	blob, err := json.Marshal(list)
+	if err != nil {
+		CError.Emit(err)
+	} else {
+		json.Unmarshal(blob, v)
+	}
+	elapsed := time.Since(start)
+	fmt.Println(elapsed)
 }
