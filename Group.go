@@ -86,6 +86,7 @@ func (g *group) GetAll(v interface{}) {
 func (g *group) PipeAll(w http.ResponseWriter) {
 	var wg sync.WaitGroup
 	pr, pw := io.Pipe()
+	pw.Write([]byte("["))
 	files, err := os.ReadDir(g.path)
 	if err != nil {
 		CError.Emit(err)
@@ -108,6 +109,7 @@ func (g *group) PipeAll(w http.ResponseWriter) {
 						CError.Emit(err)
 					}
 					json.NewEncoder(pw).Encode(&rv)
+					pw.Write([]byte(","))
 				}
 			}(file)
 		}
@@ -115,6 +117,7 @@ func (g *group) PipeAll(w http.ResponseWriter) {
 
 	go func(wg *sync.WaitGroup, pw *io.PipeWriter) {
 		wg.Wait()
+		pw.Write([]byte("]"))
 		pw.Close()
 	}(&wg, pw)
 
