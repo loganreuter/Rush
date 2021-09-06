@@ -86,11 +86,14 @@ func (g *group) GetAll(v interface{}) {
 func (g *group) PipeAll(w http.ResponseWriter) {
 	var wg sync.WaitGroup
 	pr, pw := io.Pipe()
-	pw.Write([]byte("["))
 	files, err := os.ReadDir(g.path)
 	if err != nil {
 		CError.Emit(err)
 	}
+
+	var list []map[string]interface{}
+
+	ch := make(chan map[string]interface{}, 1000)
 
 	for _, file := range files {
 
@@ -108,20 +111,56 @@ func (g *group) PipeAll(w http.ResponseWriter) {
 					if err := json.Unmarshal(buff, &rv); err != nil {
 						CError.Emit(err)
 					}
-					json.NewEncoder(pw).Encode(&rv)
-					pw.Write([]byte(","))
+					ch <- rv
 				}
 			}(file)
 		}
 	}
 
-	go func(wg *sync.WaitGroup, pw *io.PipeWriter) {
+	go func(wg *sync.WaitGroup, ch chan map[string]interface{}) {
 		wg.Wait()
-		pw.Write([]byte("]"))
-		pw.Close()
-	}(&wg, pw)
+		close(ch)
+	}(&wg, ch)
+
+	for v := range ch {
+		list = append(list, v)
+	}
+	go func(pw *io.PipeWriter) {
+		defer pw.Close()
+		json.NewEncoder(pw).Encode(list)
+	}(pw)
 
 	io.Copy(w, pr)
+}
+
+func (g *group) UploadFile(name string, r *http.Request, key string) {
+	file, _, err := r.FormFile(key)
+	if err != nil {
+		panic(err)
+	}
+
+	dst, err := os.Create(path.Join(g.path, "files", name))
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(dst, file)
+}
+
+func (g *group) WriteFile(name string, data []byte) {
+	if err := os.WriteFile(name, data, 0755); err != nil {
+		panic(err)
+	}
+}
+
+func (g *group) SendFile(name string, w http.ResponseWriter) {
+
+	file, err := os.Open(path.Join(g.path, "files", name))
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(w, file)
 }
 
 func (g *group) Where(args ...string) {

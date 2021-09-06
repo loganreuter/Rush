@@ -2,7 +2,9 @@ package rush
 
 import (
 	"encoding/json"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -19,6 +21,34 @@ func (m *member) SubGroup(name string) *group {
 		log.Println("\033[31m", err)
 	}
 	return &group{path: path.Join(m.path, "SubGroup", name)}
+}
+
+func (m *member) UploadFile(name string, r *http.Request, key string) {
+	file, _, err := r.FormFile(key)
+	if err != nil {
+		panic(err)
+	}
+
+	dst, err := os.Create(path.Join(m.path, "files", name))
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(dst, file)
+}
+
+func (m *member) WriteFile(name string, data []byte) {
+
+}
+
+func (m *member) SendFile(name string, w http.ResponseWriter) {
+
+	file, err := os.Open(path.Join(m.path, "files", name))
+	if err != nil {
+		panic(err)
+	}
+
+	io.Copy(w, file)
 }
 
 func (m *member) Create(model interface{}) *member {
