@@ -24,11 +24,19 @@ type group struct {
 }
 
 func (g *group) Member(name string) *member {
-	os.MkdirAll(path.Join(g.path, name), 0755)
+	// os.MkdirAll(path.Join(g.path, name), 0755)
 	if g.strict {
 		return &member{name: name, schema: g.Schema, path: path.Join(g.path, name)}
 	}
 	return &member{name: name, path: path.Join(g.path, name)}
+}
+
+func (g *group) Create() *group {
+	if err := os.MkdirAll(g.path, 0755); err != nil {
+		log.Println("\033[31m", err)
+	}
+
+	return g
 }
 
 func (g *group) GetAll(v interface{}) {
@@ -171,5 +179,4 @@ func (g *group) First(args ...interface{}) {
 	if len(args) != 0 && reflect.TypeOf(args[0]).Kind() != reflect.Ptr {
 		panic("First argument must be a pointer")
 	}
-
 }

@@ -1,7 +1,6 @@
 package rush
 
 import (
-	"log"
 	"os"
 	"path"
 )
@@ -45,9 +44,6 @@ func (conn *Connection) Group(name string) *group {
 	}
 
 	g := &group{name: name, path: path.Join(conn.dirname, name)}
-	conn.groups = append(conn.groups, g)
-	if err := os.MkdirAll(g.path, 0755); err != nil {
-		log.Println("\033[31m", err)
-	}
+	// conn.groups = append(conn.groups, g)
 	return g
 }

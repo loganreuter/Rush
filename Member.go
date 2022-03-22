@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"reflect"
+
+	CError "github.com/lreuter2020/rush/Errors"
 )
 
 type member struct {
@@ -55,12 +57,17 @@ func (m *member) Create(model interface{}) *member {
 	// fmt.Println(reflect.TypeOf(model).String())
 	if m.schema != nil {
 		if !check(m.schema, model) {
-			log.Println("\033[31m", "Model does not match set schema")
+			CError.Emit("Model does not match set schema")
 		}
 	}
+
+	if err := os.MkdirAll(m.path, 0755); err != nil {
+		CError.Emit(err)
+	}
+
 	blob, _ := json.Marshal(model)
 	if err := os.WriteFile(path.Join(m.path, m.name+".json"), blob, 0666); err != nil {
-		log.Println("\033[31m", err)
+		CError.Emit(err)
 	}
 
 	return m
@@ -69,15 +76,15 @@ func (m *member) Create(model interface{}) *member {
 func (m *member) Read(v interface{}) {
 	content, err := os.ReadFile(path.Join(m.path, m.name+".json"))
 	if err != nil {
-		log.Println("\033[31m", err)
+		CError.Emit(err)
 	}
 
 	if reflect.TypeOf(v).Kind() != reflect.Ptr {
-		log.Println("\033[31m", "Error: Must pass pointer!")
+		CError.Emit("Error: Must pass pointer!")
 	}
 
 	if err := json.Unmarshal(content, v); err != nil {
-		log.Println("\033[31m", err)
+		CError.Emit(err)
 	}
 }
 
